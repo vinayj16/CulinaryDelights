@@ -17,16 +17,23 @@ async function createServer() {
   // Add JSON body parsing middleware
   app.use(express.json())
 
-  // Create Vite server in middleware mode
-  const vite = await createViteServer({
-    server: { middlewareMode: true },
-    appType: 'custom'
-  })
+  let vite
+  const isProd = process.env.NODE_ENV === 'production'
 
-  // Use vite's connect instance as middleware
-  app.use(vite.middlewares)
+  if (!isProd) {
+    // Create Vite server in middleware mode for development
+    vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'custom'
+    })
+    // Use vite's connect instance as middleware
+    app.use(vite.middlewares)
+  } else {
+    // Serve production static assets
+    app.use(express.static(path.resolve(__dirname, 'dist/client')))
+  }
 
-  // Serve static files
+  // Serve public files
   app.use(express.static(path.resolve(__dirname, 'public')))
 
   // API endpoint for reservations
@@ -50,15 +57,22 @@ async function createServer() {
     try {
       const url = req.originalUrl
 
-      // Read index.html
-      let template = await vite.fs.readFile(path.resolve(__dirname, 'index.html'), 'utf-8')
-      
-      // Apply Vite HTML transforms
-      template = await vite.transformIndexHtml(url, template)
-      
-      // Load server entry module
-      const { render } = await vite.ssrLoadModule('/src/entry-server.js')
-      
+      let template, render
+
+      if (!isProd) {
+        // Development mode
+        template = await vite.fs.readFile(path.resolve(__dirname, 'index.html'), 'utf-8')
+        template = await vite.transformIndexHtml(url, template)
+        render = (await vite.ssrLoadModule('/src/entry-server.js')).render
+      } else {
+        // Production mode
+        template = await import('fs').then(fs => fs.promises.readFile(
+          path.resolve(__dirname, 'dist/client/index.html'),
+          'utf-8'
+        ))
+        render = (await import('./dist/server/entry-server.js')).render
+      }
+
       // Render the app HTML
       const { html: appHtml } = await render(url)
       
