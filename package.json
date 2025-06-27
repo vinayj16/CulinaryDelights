@@ -1,8 +1,8 @@
 {
   "name": "restaurant",
-  "private": true,
   "version": "0.0.0",
-  "type": "commonjs",
+  "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "dev:ssr": "node server.js",
@@ -31,8 +31,7 @@
     "vue": "^3.3.4",
     "vue-router": "^4.2.5",
     "vue-toastification": "^2.0.0-rc.5",
-    "yup": "^1.6.1",
-    "@vitejs/plugin-vue": "^5.2.1"
+    "yup": "^1.6.1"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.1",
