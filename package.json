@@ -6,11 +6,12 @@
   "scripts": {
     "dev": "vite",
     "dev:ssr": "node server.js",
-    "build": "cross-env NODE_ENV=production npm run build:client && npm run build:server",
-    "build:client": "npx vite build --outDir dist/client",
-    "build:server": "cross-env SSR=true npx vite build --ssr src/entry-server.js --outDir dist/server",
-    "start": "cross-env NODE_ENV=production node server.js",
-    "preview": "cross-env NODE_ENV=production node server.js"
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "vite build",
+    "build:server": "vite build --ssr",
+    "serve": "node server.js",
+    "start": "node server.js",
+    "preview": "node server.js"
   },
   "dependencies": {
     "@types/three": "^0.176.0",
@@ -27,7 +28,7 @@
     "socket.io-client": "^4.8.1",
     "three": "^0.176.0",
     "vee-validate": "^4.15.1",
-    "vite": "^6.1.1",
+    "vite": "^7.0.0",
     "vite-plugin-imagemin": "^0.1.0",
     "vite-plugin-pwa": "^1.0.0",
     "@vitejs/plugin-vue": "^5.2.1",

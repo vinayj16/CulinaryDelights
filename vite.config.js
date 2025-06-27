@@ -1,28 +1,32 @@
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import path from 'path'
+import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+import path from 'path';
 
-// https://vite.dev/config/
-export default defineConfig({
-  plugins: [vue()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src')
-    }
-  },
-  server: {
-    port: 5173,
-    host: true
-  },
-  build: {
-    manifest: true,
-    rollupOptions: {
-      input: './index.html'
-    }
-  },
-  ssr: {
-    noExternal: ['vue', 'vue-router'],
-    target: 'node',
-    entry: './src/entry-server.js'
-  }
-})
+export default defineConfig(({ command, ssrBuild }) => {
+  const isSSR = !!ssrBuild;
+
+  return {
+    plugins: [vue()],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
+    },
+    server: {
+      port: 5173,
+      host: true,
+    },
+    build: {
+      ssr: isSSR ? 'src/entry-server.js' : false,
+      outDir: isSSR ? 'dist/server' : 'dist/client',
+      manifest: !isSSR,
+      emptyOutDir: false,
+      rollupOptions: {
+        input: !isSSR ? './index.html' : undefined,
+      },
+    },
+    ssr: {
+      noExternal: ['vue', 'vue-router'], // keep for SSR bundling
+    },
+  };
+});
