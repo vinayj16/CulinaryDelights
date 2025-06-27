@@ -17,10 +17,12 @@ export default defineConfig({
   build: {
     manifest: true,
     rollupOptions: {
-      input: process.env.SSR ? './src/entry-server.js' : './index.html'
-    },
-    ssr: {
-      noExternal: ['vue', 'vue-router']
+      input: './index.html'
     }
+  },
+  ssr: {
+    noExternal: ['vue', 'vue-router'],
+    target: 'node',
+    entry: './src/entry-server.js'
   }
 })
