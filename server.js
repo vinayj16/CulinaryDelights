@@ -1,32 +1,39 @@
-const port = process.env.PORT || 5173;
-const express = require('express')
-const path = require('path')
-const { createServer: createViteServer } = require('vite')
+import express from 'express'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import { createServer as createViteServer } from 'vite'
+import compression from 'compression'
+import helmet from 'helmet'
 
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send('Something broke!');
-});
-const compression = require('compression');
-app.use(compression());
-const helmet = require('helmet');
-app.use(helmet());
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 async function createServer() {
   const app = express()
+
+  // Add security and optimization middleware
+  app.use(helmet())
+  app.use(compression())
 
   // Add JSON body parsing middleware
   app.use(express.json())
 
-  // Create Vite server in middleware mode
-  const vite = await createViteServer({
-    server: { middlewareMode: true },
-    appType: 'custom'
-  })
+  let vite
+  const isProd = process.env.NODE_ENV === 'production'
 
-  // Use vite's connect instance as middleware
-  app.use(vite.middlewares)
+  if (!isProd) {
+    // Create Vite server in middleware mode for development
+    vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'custom'
+    })
+    // Use vite's connect instance as middleware
+    app.use(vite.middlewares)
+  } else {
+    // Serve production static assets
+    app.use(express.static(path.resolve(__dirname, 'dist/client')))
+  }
 
-  // Serve static files
+  // Serve public files
   app.use(express.static(path.resolve(__dirname, 'public')))
 
   // API endpoint for reservations
@@ -50,14 +57,30 @@ async function createServer() {
     try {
       const url = req.originalUrl
 
-      // Read index.html
-      let template = await vite.transformIndexHtml(
-        url,
-        await vite.fs.readFile(path.resolve(__dirname, 'index.html'), 'utf-8')
-      )
+      let template, render
 
+      if (!isProd) {
+        // Development mode
+        template = await vite.fs.readFile(path.resolve(__dirname, 'index.html'), 'utf-8')
+        template = await vite.transformIndexHtml(url, template)
+        render = (await vite.ssrLoadModule('/src/entry-server.js')).render
+      } else {
+        // Production mode
+        template = await import('fs').then(fs => fs.promises.readFile(
+          path.resolve(__dirname, 'dist/client/index.html'),
+          'utf-8'
+        ))
+        render = (await import('./dist/server/entry-server.js')).render
+      }
+
+      // Render the app HTML
+      const { html: appHtml } = await render(url)
+      
+      // Inject the app-rendered HTML into the template
+      const html = template.replace('<!--app-html-->', appHtml)
+      
       // Send the rendered HTML back
-      res.status(200).set({ 'Content-Type': 'text/html' }).end(template)
+      res.status(200).set({ 'Content-Type': 'text/html' }).end(html)
     } catch (e) {
       // If an error is caught, let Vite fix the stack trace
       vite.ssrFixStacktrace(e)
@@ -66,7 +89,13 @@ async function createServer() {
     }
   })
 
-  const port = 5173
+  // Error handling middleware should be last
+  app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).send('Something broke!');
+  });
+
+  const port = process.env.PORT || 5173
   app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`)
   })
